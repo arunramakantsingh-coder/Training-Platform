@@ -1,14 +1,7 @@
-import type { ReactNode } from "react";
+import "./globals.css";
 
-export const metadata = {
-  title: "Training Platform",
-  description: "Courses and hands-on training labs"
-};
+export const metadata = { title: "Training Platform", description: "Training delivery and hands-on lab platform" };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  );
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  return <html lang="en"><body><div className="shell">{children}</div></body></html>;
 }
