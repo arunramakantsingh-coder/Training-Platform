@@ -14,14 +14,17 @@
 - Platform-admin authorization and read-only admin endpoints.
 - Bootstrap script for creating/promoting a platform administrator.
 - Next.js pages for home, registration, login, dashboard and platform admin.
-- Docker Compose startup that runs migrations before the API.
+- Phase-isolated Docker Compose startup for the services implemented in Phase 2.
 - SQLite-backed API tests covering health, authentication, duplicate registration, bad login, organization creation and authorization.
 
 ## Local Validation on EVE-NG VM
 
+Phase 2 must be independently buildable and runnable. Lab Controller and Lab Interface are future phases and are not required for this phase.
+
 From the repository root:
 
 ```bash
+docker compose -f deployment/docker/docker-compose.yml config
 docker compose -f deployment/docker/docker-compose.yml build
 docker compose -f deployment/docker/docker-compose.yml up -d
 docker compose -f deployment/docker/docker-compose.yml ps
@@ -39,7 +42,10 @@ docker compose -f deployment/docker/docker-compose.yml exec training-website \
   --password "ChangeThisPassword123!"
 ```
 
-Frontend: `http://<EVE-NG-VM-IP>:3000` when the port is reachable. API: `http://<EVE-NG-VM-IP>:8000`.
+Frontend: `http://<EVE-NG-VM-IP>:3000` when the port is reachable.
+API: `http://<EVE-NG-VM-IP>:8000`.
+
+For remote browser access, set `NEXT_PUBLIC_API_BASE_URL` to the reachable VM API URL and `CORS_ORIGINS` to the frontend origin.
 
 ## Phase 2 Security Boundary
 
