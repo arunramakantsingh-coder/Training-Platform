@@ -8,7 +8,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://training:training@db:5432/training}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-development}
       AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://eve-ng:3000}
     depends_on:
       db:
         condition: service_healthy
@@ -26,14 +26,21 @@ services:
     build:
       context: ../../training-website/frontend
       dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://100.111.174.119:8000}
-    environment:
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
     depends_on:
       - training-website
     ports:
+      - "3001:3000"
+    restart: unless-stopped
+
+  training-website-proxy:
+    image: nginx:alpine
+    depends_on:
+      - training-website
+      - training-website-frontend
+    ports:
       - "${TRAINING_WEBSITE_FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - ./nginx/training-platform.conf:/etc/nginx/conf.d/default.conf:ro
     restart: unless-stopped
 
   db:
