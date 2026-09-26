@@ -1,0 +1,64 @@
+services:
+  training-website:
+    build:
+      context: ../../training-website
+      dockerfile: backend/Dockerfile
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://training:training@db:5432/training}
+    depends_on:
+      db:
+        condition: service_healthy
+      lab-controller:
+        condition: service_started
+    ports:
+      - "${TRAINING_WEBSITE_PORT:-8000}:8000"
+    restart: unless-stopped
+
+  training-website-frontend:
+    build:
+      context: ../../training-website/frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - training-website
+    ports:
+      - "${TRAINING_WEBSITE_FRONTEND_PORT:-3000}:3000"
+    restart: unless-stopped
+
+  lab-controller:
+    build:
+      context: ../../lab-controller
+      dockerfile: Dockerfile
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LAB_INTERFACE_URL: ${LAB_INTERFACE_URL:-http://lab-interface:8080}
+    depends_on:
+      - lab-interface
+    restart: unless-stopped
+
+  lab-interface:
+    build:
+      context: ../../lab-interface
+      dockerfile: Dockerfile
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LAB_PLATFORM: ${LAB_PLATFORM:-eveng}
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: training
+      POSTGRES_USER: training
+      POSTGRES_PASSWORD: training
+    volumes:
+      - training-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U training -d training"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  training-db-data:
