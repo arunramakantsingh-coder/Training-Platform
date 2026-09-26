@@ -61,5 +61,5 @@ The EVE-NG VM validation exposed a Pydantic Settings startup parsing issue for `
 
 ## VM deployment configuration
 
-The frontend API endpoint is deployment-configured through `NEXT_PUBLIC_API_BASE_URL`. For the current EVE-NG VM/Tailscale environment, the Compose default is `http://100.111.174.119:8000`. This is an environment variable and can be overridden without source changes for another VM, hostname, reverse proxy, or production deployment.
+The frontend API endpoint is deployment-configured through `NEXT_PUBLIC_API_BASE_URL`. Because the frontend uses a client-side `NEXT_PUBLIC_*` variable, Docker must provide this value as a build argument during `next build`; a runtime-only container environment variable is not sufficient for the already-built browser bundle. For the current EVE-NG VM/Tailscale environment, the Compose development default is `http://100.111.174.119:8000`. This can be overridden without source changes for another VM, hostname, reverse proxy, or production deployment. The production target remains same-origin DNS/HTTPS routing through a reverse proxy as tracked by Issue #5.
 
