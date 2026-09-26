@@ -1,35 +1,68 @@
 # Training Platform
 
-A multi-tenant training platform for organizations and individual subscribers, with course delivery and hands-on lab access.
+A reusable training and hands-on lab platform for organizations and individual subscribers.
 
-## Components
+## Core Components
 
-- training-website — learner, course, subscription, administration, and lab access experience.
-- lab-controller — lab lifecycle and student lab orchestration.
-- lab-interface — platform-specific interface between Lab Controller and the lab system.
+- **Training Website** — learner, organization, course, subscription, administration, and lab-access experience.
+- **Lab Controller** — lab lifecycle, provisioning, assignment, status, and orchestration.
+- **Lab Interface** — stable interface between Lab Controller and the underlying lab platform, with the initial EVE-NG implementation.
 
-## Development Layout
+## Architecture
+
+```
+Training Website
+       |
+       v
+Lab Controller
+       |
+       v
+Lab Interface
+       |
+       v
+EVE-NG
+```
+
+The three components are independent services and may initially run as separate Docker containers on the same VM.
+
+## Customer Model
+
+One platform can serve multiple organizations and individual subscribers.
+
+Organizations can have multiple users/students. Individuals can subscribe and select courses/labs available to them.
+
+## Repository Layout
 
 ```
 Training-Platform/
 ├── training-website/
+│   ├── frontend/
+│   └── backend/
 ├── lab-controller/
 ├── lab-interface/
+│   └── eveng/
 ├── deployment/
 └── docs/
 ```
 
-The three components remain logically independent and can run as separate containers while initially sharing the same EVE-NG VM.
+## Development and Deployment
 
-## Development Workflow
+GitHub is the source of truth for application code. Development work is completed in feature branches and reviewed through pull requests.
 
-1. Plan work in the GitHub Project and Issues.
-2. Implement changes in this repository.
-3. Commit changes to GitHub.
-4. Pull the required revision into the EVE-NG VM.
-5. Test there.
-6. Record fixes and follow-up work in GitHub.
+The initial test environment is a single EVE-NG VM. The application components are deployed separately from EVE-NG's own files.
+
+Application files should use a dedicated path such as:
+
+```
+/opt/training-platform/
+```
+
+Do not place application code under:
+
+```
+/opt/unetlab/
+```
 
 ## Scope Boundary
 
-EVE-NG is the lab execution platform for the current development environment. AInterceptor is a separate product and is not part of this repository.
+AInterceptor is a separate product and is not part of this repository.
