@@ -10,6 +10,38 @@ The Training Platform is a reusable product for organizations and individual sub
 
 EVE-NG is the current execution platform. AInterceptor is a separate product and is outside this repository.
 
+## Cross-Phase Architecture Rules
+
+### Deployment and URL Configuration
+
+The application must never depend on a fixed VM, LAN, NAT, Tailscale, cloud, or public IP address.
+
+All environment-specific endpoints must be deployment configuration, not application-source constants. The same build should be deployable to a local VM, another VM with a different IP, a private network, a cloud host, or the public Internet without changing application source.
+
+For development, a deployment may provide an explicit API endpoint through an environment variable such as `NEXT_PUBLIC_API_BASE_URL`.
+
+For Internet/public hosting, the preferred target architecture is same-origin access behind DNS and HTTPS:
+
+```text
+Browser
+  |
+  | https://training.example.com
+  |
+  +-- /       -> Training Website frontend
+  |
+  +-- /api/* -> Training Website backend
+```
+
+In that model, the browser does not need to know the backend server IP. DNS, reverse proxy/load balancer, and deployment configuration provide the routing.
+
+The frontend API client should therefore support an empty API base URL and use relative `/api/...` paths for same-origin deployments. Public DNS names and TLS certificates belong to deployment/operations configuration, not hard-coded source.
+
+Never commit a changing infrastructure IP as the permanent production value of `NEXT_PUBLIC_API_BASE_URL`. Any current VM-specific value is development-only and must remain overrideable.
+
+### Service and Platform Separation
+
+Training Website, Lab Controller, and Lab Interface remain logically separated services. EVE-NG is the lab execution platform, not a product service. Platform-specific behavior belongs behind Lab Interface.
+
 ## Phase Roadmap
 
 ### Phase 0 — Product Definition & Architecture
