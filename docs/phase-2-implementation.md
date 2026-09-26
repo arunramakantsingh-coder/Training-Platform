@@ -59,3 +59,7 @@ Phase 3 starts only after the local Phase 2 test flow passes on the EVE-NG VM.
 
 The EVE-NG VM validation exposed a Pydantic Settings startup parsing issue for `CORS_ORIGINS`. The application container restarted during Alembic initialization because the environment-settings source attempted JSON decoding before the application validator handled the value. The configuration parser was updated to accept JSON-list and comma-separated forms and to reject unsupported structures clearly.
 
+## VM deployment configuration
+
+The frontend API endpoint is deployment-configured through `NEXT_PUBLIC_API_BASE_URL`. For the current EVE-NG VM/Tailscale environment, the Compose default is `http://100.111.174.119:8000`. This is an environment variable and can be overridden without source changes for another VM, hostname, reverse proxy, or production deployment.
+
