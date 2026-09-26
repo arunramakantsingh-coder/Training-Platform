@@ -1,0 +1,30 @@
+services:
+  training-website:
+    build:
+      context: ../../training-website
+      dockerfile: Dockerfile
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+    depends_on:
+      - lab-controller
+    restart: unless-stopped
+
+  lab-controller:
+    build:
+      context: ../../lab-controller
+      dockerfile: Dockerfile
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LAB_INTERFACE_URL: ${LAB_INTERFACE_URL:-http://lab-interface:8080}
+    depends_on:
+      - lab-interface
+    restart: unless-stopped
+
+  lab-interface:
+    build:
+      context: ../../lab-interface
+      dockerfile: Dockerfile
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LAB_PLATFORM: ${LAB_PLATFORM:-eveng}
+    restart: unless-stopped
