@@ -1,7 +1,9 @@
+import json
 from functools import lru_cache
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class Settings(BaseSettings):
     app_name: str = "Training Platform API"
@@ -20,11 +22,21 @@ class Settings(BaseSettings):
     @classmethod
     def parse_cors_origins(cls, value):
         if isinstance(value, str):
-            return [item.strip() for item in value.split(",") if item.strip()]
+            value = value.strip()
+            if not value:
+                return []
+            try:
+                parsed = json.loads(value)
+            except json.JSONDecodeError:
+                return [item.strip() for item in value.split(",") if item.strip()]
+            if isinstance(parsed, list):
+                return [str(item).strip() for item in parsed if str(item).strip()]
         return value
+
 
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
 
 settings = get_settings()
