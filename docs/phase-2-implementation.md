@@ -54,3 +54,8 @@ This is a development foundation, not the final production security posture. Pha
 ## Next Phase
 
 Phase 3 starts only after the local Phase 2 test flow passes on the EVE-NG VM.
+
+## Known VM runtime issue and fix history
+
+The EVE-NG VM validation exposed a Pydantic Settings startup parsing issue for `CORS_ORIGINS`. The application container restarted during Alembic initialization because the environment-settings source attempted JSON decoding before the application validator handled the value. The configuration parser was updated to accept JSON-list and comma-separated forms and to reject unsupported structures clearly.
+
