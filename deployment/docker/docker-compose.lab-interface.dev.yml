@@ -1,0 +1,17 @@
+services:
+  lab-interface:
+    build:
+      context: ../../lab-interface
+      dockerfile: Dockerfile.dev
+    environment:
+      APP_ENV: development
+      EVE_NG_BASE_URL: ${EVE_NG_BASE_URL:-https://eve-ng}
+      EVE_NG_USERNAME: ${EVE_NG_USERNAME:-admin}
+      EVE_NG_PASSWORD: ${EVE_NG_PASSWORD:-eve}
+      EVE_NG_VERIFY_SSL: ${EVE_NG_VERIFY_SSL:-false}
+      EVE_NG_TIMEOUT_SECONDS: ${EVE_NG_TIMEOUT_SECONDS:-15}
+    ports:
+      - "8200:8200"
+    volumes:
+      - ../../lab-interface:/app
+    restart: unless-stopped
