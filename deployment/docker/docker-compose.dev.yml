@@ -28,6 +28,8 @@ services:
     build:
       context: ../../training-website/frontend
       dockerfile: Dockerfile.dev
+    environment:
+      WATCHPACK_POLLING: "true"
     volumes:
       - ../../training-website/frontend:/app
       - training-frontend-node-modules:/app/node_modules
@@ -57,7 +59,7 @@ services:
       POSTGRES_USER: training
       POSTGRES_PASSWORD: training
     volumes:
-      - training-db-data:/var/lib/postgresql/data
+      - training-db-data-dev:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U training -d training"]
       interval: 5s
@@ -66,6 +68,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  training-db-data:
+  training-db-data-dev:
   training-frontend-node-modules:
   training-frontend-next:
