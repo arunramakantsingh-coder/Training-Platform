@@ -76,7 +76,7 @@ class EveNGClient:
         try:
             self.get_folder(normalized)
             return
-        except EveNGError:
+        except (EveNGError, httpx.HTTPStatusError):
             parts = [part for part in normalized.strip("/").split("/") if part]
             current = ""
             for part in parts:
@@ -84,7 +84,7 @@ class EveNGClient:
                 current = f"{current}/{part}"
                 try:
                     self.get_folder(current)
-                except EveNGError:
+                except (EveNGError, httpx.HTTPStatusError):
                     self.create_folder(parent, part)
 
     def get_lab(self, path: str) -> dict:
