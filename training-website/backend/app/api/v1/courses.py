@@ -8,7 +8,7 @@ from app.api.dependencies import require_platform_admin
 from app.core.database import get_db
 from app.models.course import Course, CourseCategory, CourseModule, CoursePrerequisite, Lesson, LessonLabReference, LessonResource, LessonTopic
 from app.models.user import User
-from app.schemas.course import CourseCategoryBase, CourseCategoryResponse, CourseCreateRequest, CourseModuleCreateRequest, CourseModuleResponse, CourseResponse, CourseUpdateRequest, LabReferenceCreateRequest, LabReferenceResponse, LessonCreateRequest, LessonResponse, ResourceCreateRequest, ResourceResponse, TopicCreateRequest, TopicResponse
+from app.schemas.course import CourseCategoryBase, CourseCategoryResponse, CourseCreateRequest, CourseModuleCreateRequest, CourseModuleResponse, CourseModuleUpdateRequest, CourseResponse, CourseUpdateRequest, LabReferenceCreateRequest, LabReferenceResponse, LessonCreateRequest, LessonResponse, LessonUpdateRequest, ResourceCreateRequest, ResourceResponse, TopicCreateRequest, TopicResponse
 
 router = APIRouter(prefix="/courses", tags=["courses"])
 admin_router = APIRouter(prefix="/admin/courses", tags=["admin-courses"])
@@ -216,6 +216,22 @@ def create_module(course_id: int, payload: CourseModuleCreateRequest, _: User = 
     return module
 
 
+@admin_router.patch("/{course_id}/modules/{module_id}", response_model=CourseModuleResponse)
+def update_module(course_id: int, module_id: int, payload: CourseModuleUpdateRequest, _: User = Depends(require_platform_admin), db: Session = Depends(get_db)) -> CourseModule:
+    module = db.get(CourseModule, module_id)
+    course = get_course(db, course_id)
+    if module is None or module.course_id != course_id:
+        raise HTTPException(status_code=404, detail="Course module not found")
+    if course.status in {"published", "retired"}:
+        raise HTTPException(status_code=409, detail="Published or retired courses cannot be edited")
+    values = payload.model_dump(exclude_unset=True)
+    if "order_index" in values and values["order_index"] != module.order_index:
+        if db.scalar(select(CourseModule).where(CourseModule.course_id == course_id, CourseModule.order_index == values["order_index"], CourseModule.id != module_id)):
+            raise HTTPException(status_code=409, detail="Module order already exists")
+    for key, value in values.items():
+        setattr(module, key, value)
+    db.commit(); db.refresh(module); return module
+
 @admin_router.get("/{course_id}/modules", response_model=list[CourseModuleResponse])
 def list_modules(course_id: int, _: User = Depends(require_platform_admin), db: Session = Depends(get_db)) -> list[CourseModule]:
     get_course(db, course_id)
@@ -238,6 +254,20 @@ def create_lesson(course_id: int, module_id: int, payload: LessonCreateRequest, 
     db.refresh(lesson)
     return lesson
 
+
+@admin_router.patch("/{course_id}/modules/{module_id}/lessons/{lesson_id}", response_model=LessonResponse)
+def update_lesson(course_id: int, module_id: int, lesson_id: int, payload: LessonUpdateRequest, _: User = Depends(require_platform_admin), db: Session = Depends(get_db)) -> Lesson:
+    lesson = get_lesson_for_course(db, course_id, module_id, lesson_id)
+    course = get_course(db, course_id)
+    if course.status in {"published", "retired"}:
+        raise HTTPException(status_code=409, detail="Published or retired courses cannot be edited")
+    values = payload.model_dump(exclude_unset=True)
+    if "order_index" in values and values["order_index"] != lesson.order_index:
+        if db.scalar(select(Lesson).where(Lesson.module_id == module_id, Lesson.order_index == values["order_index"], Lesson.id != lesson_id)):
+            raise HTTPException(status_code=409, detail="Lesson order already exists")
+    for key, value in values.items():
+        setattr(lesson, key, value)
+    db.commit(); db.refresh(lesson); return lesson
 
 @admin_router.get("/{course_id}/modules/{module_id}/lessons", response_model=list[LessonResponse])
 def list_lessons(course_id: int, module_id: int, _: User = Depends(require_platform_admin), db: Session = Depends(get_db)) -> list[Lesson]:
