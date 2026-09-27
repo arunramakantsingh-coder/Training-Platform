@@ -1,0 +1,36 @@
+services:
+  lab-controller:
+    build:
+      context: ../../lab-controller
+      dockerfile: Dockerfile.dev
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+psycopg://lab:lab@lab-db:5432/lab
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-development}
+      JWT_ALGORITHM: HS256
+    depends_on:
+      lab-db:
+        condition: service_healthy
+    ports:
+      - "8100:8100"
+    volumes:
+      - ../../lab-controller:/app
+    restart: unless-stopped
+
+  lab-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: lab
+      POSTGRES_USER: lab
+      POSTGRES_PASSWORD: lab
+    volumes:
+      - lab-controller-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lab -d lab"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  lab-controller-db-data:
