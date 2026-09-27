@@ -152,6 +152,15 @@ def update_course(course_id: int, payload: CourseUpdateRequest, _: User = Depend
     return course
 
 
+@admin_router.get("/{course_id}/prerequisites", response_model=list[CourseResponse])
+def list_prerequisites(course_id: int, _: User = Depends(require_platform_admin), db: Session = Depends(get_db)) -> list[Course]:
+    course = get_course(db, course_id)
+    ids = db.scalars(select(CoursePrerequisite.prerequisite_course_id).where(CoursePrerequisite.course_id == course.id)).all()
+    if not ids:
+        return []
+    return list(db.scalars(select(Course).where(Course.id.in_(ids)).order_by(Course.title.asc())).all())
+
+
 @admin_router.post("/{course_id}/submit-review", response_model=CourseResponse)
 def submit_review(course_id: int, _: User = Depends(require_platform_admin), db: Session = Depends(get_db)) -> Course:
     course = get_course(db, course_id)
@@ -277,9 +286,18 @@ def list_lessons(course_id: int, module_id: int, _: User = Depends(require_platf
     return list(db.scalars(select(Lesson).where(Lesson.module_id == module_id).order_by(Lesson.order_index.asc())).all())
 
 
+@admin_router.get("/{course_id}/modules/{module_id}/lessons/{lesson_id}/topics", response_model=list[TopicResponse])
+def list_topics(course_id: int, module_id: int, lesson_id: int, _: User = Depends(require_platform_admin), db: Session = Depends(get_db)) -> list[LessonTopic]:
+    lesson = get_lesson_for_course(db, course_id, module_id, lesson_id)
+    return list(db.scalars(select(LessonTopic).where(LessonTopic.lesson_id == lesson.id).order_by(LessonTopic.order_index.asc())).all())
+
+
 @admin_router.post("/{course_id}/modules/{module_id}/lessons/{lesson_id}/topics", response_model=TopicResponse, status_code=status.HTTP_201_CREATED)
 def create_topic(course_id: int, module_id: int, lesson_id: int, payload: TopicCreateRequest, _: User = Depends(require_platform_admin), db: Session = Depends(get_db)) -> LessonTopic:
     lesson = get_lesson_for_course(db, course_id, module_id, lesson_id)
+    course = get_course(db, course_id)
+    if course.status in {"published", "retired"}:
+        raise HTTPException(status_code=409, detail="Published or retired courses cannot be edited")
     if db.scalar(select(LessonTopic).where(LessonTopic.lesson_id == lesson.id, LessonTopic.order_index == payload.order_index)):
         raise HTTPException(status_code=409, detail="Topic order already exists")
     topic = LessonTopic(lesson_id=lesson.id, **payload.model_dump())
@@ -289,9 +307,18 @@ def create_topic(course_id: int, module_id: int, lesson_id: int, payload: TopicC
     return topic
 
 
+@admin_router.get("/{course_id}/modules/{module_id}/lessons/{lesson_id}/resources", response_model=list[ResourceResponse])
+def list_resources(course_id: int, module_id: int, lesson_id: int, _: User = Depends(require_platform_admin), db: Session = Depends(get_db)) -> list[LessonResource]:
+    lesson = get_lesson_for_course(db, course_id, module_id, lesson_id)
+    return list(db.scalars(select(LessonResource).where(LessonResource.lesson_id == lesson.id).order_by(LessonResource.id.asc())).all())
+
+
 @admin_router.post("/{course_id}/modules/{module_id}/lessons/{lesson_id}/resources", response_model=ResourceResponse, status_code=status.HTTP_201_CREATED)
 def create_resource(course_id: int, module_id: int, lesson_id: int, payload: ResourceCreateRequest, _: User = Depends(require_platform_admin), db: Session = Depends(get_db)) -> LessonResource:
     lesson = get_lesson_for_course(db, course_id, module_id, lesson_id)
+    course = get_course(db, course_id)
+    if course.status in {"published", "retired"}:
+        raise HTTPException(status_code=409, detail="Published or retired courses cannot be edited")
     resource = LessonResource(lesson_id=lesson.id, **payload.model_dump())
     db.add(resource)
     db.commit()
@@ -299,9 +326,18 @@ def create_resource(course_id: int, module_id: int, lesson_id: int, payload: Res
     return resource
 
 
+@admin_router.get("/{course_id}/modules/{module_id}/lessons/{lesson_id}/lab-references", response_model=list[LabReferenceResponse])
+def list_lab_references(course_id: int, module_id: int, lesson_id: int, _: User = Depends(require_platform_admin), db: Session = Depends(get_db)) -> list[LessonLabReference]:
+    lesson = get_lesson_for_course(db, course_id, module_id, lesson_id)
+    return list(db.scalars(select(LessonLabReference).where(LessonLabReference.lesson_id == lesson.id).order_by(LessonLabReference.id.asc())).all())
+
+
 @admin_router.post("/{course_id}/modules/{module_id}/lessons/{lesson_id}/lab-references", response_model=LabReferenceResponse, status_code=status.HTTP_201_CREATED)
 def create_lab_reference(course_id: int, module_id: int, lesson_id: int, payload: LabReferenceCreateRequest, _: User = Depends(require_platform_admin), db: Session = Depends(get_db)) -> LessonLabReference:
     lesson = get_lesson_for_course(db, course_id, module_id, lesson_id)
+    course = get_course(db, course_id)
+    if course.status in {"published", "retired"}:
+        raise HTTPException(status_code=409, detail="Published or retired courses cannot be edited")
     reference = LessonLabReference(lesson_id=lesson.id, **payload.model_dump())
     db.add(reference)
     db.commit()
