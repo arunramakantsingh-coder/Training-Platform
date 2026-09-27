@@ -9,6 +9,9 @@ class FakeClient:
     def login(self):
         self.calls.append(("login",))
 
+    def ensure_folder(self, path):
+        self.calls.append(("ensure_folder", path))
+
     def create_lab(self, folder, name, author):
         self.calls.append(("create_lab", folder, name, author))
         return {"status": "success", "data": {"path": f"{folder}/{name}.unl"}}
@@ -55,6 +58,7 @@ def test_eve_adapter_lifecycle_calls_platform_client(monkeypatch):
     assert released.state == "released"
     assert deleted.state == "deleted"
 
+    assert ("ensure_folder", "/Training-Platform") in adapter.client.calls
     assert ("create_lab", "/Training-Platform", "lab-7-user-42", "Training Platform") in adapter.client.calls
     assert ("start_all", provisioned.external_reference) in adapter.client.calls
     assert ("stop_all", provisioned.external_reference) in adapter.client.calls
