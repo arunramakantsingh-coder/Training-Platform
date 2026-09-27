@@ -1,17 +1,27 @@
 def test_training_session_enrollment_and_progress(client, platform_admin):
-    client.post(
+    register = client.post(
         "/api/v1/auth/register",
         json={"email": "learner@example.com", "full_name": "Learner", "password": "StrongPassword123!"},
     )
+    assert register.status_code == 201
+
+    admin_login = client.post(
+        "/api/v1/auth/login",
+        json={"email": "course-admin@example.com", "password": "StrongPassword123!"},
+    )
+    assert admin_login.status_code == 200
+
     course = platform_admin.post(
         "/api/v1/admin/courses",
         json={"title": "SD-WAN Fundamentals", "slug": "sdwan-fundamentals"},
     )
+    assert course.status_code == 201
     course_id = course.json()["id"]
     module = platform_admin.post(
         f"/api/v1/admin/courses/{course_id}/modules",
         json={"title": "Module 1", "order_index": 0},
     )
+    assert module.status_code == 201
     lesson = platform_admin.post(
         f"/api/v1/admin/courses/{course_id}/modules/{module.json()['id']}/lessons",
         json={"title": "Lesson 1", "slug": "lesson-1", "content": "Learn SD-WAN", "order_index": 0},
@@ -26,9 +36,7 @@ def test_training_session_enrollment_and_progress(client, platform_admin):
     )
     assert session.status_code == 201
     session_id = session.json()["id"]
-    opened = platform_admin.patch(
-        f"/api/v1/admin/training/sessions/{session_id}", json={"status": "open"}
-    )
+    opened = platform_admin.patch(f"/api/v1/admin/training/sessions/{session_id}", json={"status": "open"})
     assert opened.status_code == 200
 
     learner = client.post(
