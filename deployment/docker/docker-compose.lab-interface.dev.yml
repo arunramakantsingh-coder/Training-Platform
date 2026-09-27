@@ -5,11 +5,14 @@ services:
       dockerfile: Dockerfile.dev
     environment:
       APP_ENV: development
-      EVE_NG_BASE_URL: ${EVE_NG_BASE_URL:-https://eve-ng}
+      EVE_NG_BASE_URL: ${EVE_NG_BASE_URL:-http://host.docker.internal}
       EVE_NG_USERNAME: ${EVE_NG_USERNAME:-admin}
       EVE_NG_PASSWORD: ${EVE_NG_PASSWORD:-eve}
       EVE_NG_VERIFY_SSL: ${EVE_NG_VERIFY_SSL:-false}
       EVE_NG_TIMEOUT_SECONDS: ${EVE_NG_TIMEOUT_SECONDS:-15}
+      EVE_NG_LAB_FOLDER: ${EVE_NG_LAB_FOLDER:-/Training-Platform}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8200:8200"
     volumes:
