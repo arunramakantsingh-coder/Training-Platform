@@ -1,0 +1,20 @@
+from datetime import datetime
+from sqlalchemy import DateTime, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column
+from app.database import Base
+
+class LabTemplate(Base):
+    __tablename__ = "lab_templates"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    key: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+
+class Lab(Base):
+    __tablename__ = "labs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    template_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    owner_user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    state: Mapped[str] = mapped_column(String(32), default="created", nullable=False)
+    external_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
