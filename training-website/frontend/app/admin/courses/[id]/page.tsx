@@ -97,15 +97,180 @@ export default function CourseEditorPage() {
     const lessonList = Object.values(lessonMap).flat();
 
     const detailPairs = await Promise.all(
-      lessonList.map(async lesson => {
-        const base = "/admin/courses/" + courseId + "/modules/" + modulesPath(lesson, mods) + "/lessons/" + lesson.id;
+      mods.flatMap(mod => (lessonMap[mod.id] || []).map(async lesson => {
+        const base = "/admin/courses/" + courseId + "/modules/" + mod.id + "/lessons/" + lesson.id;
         const [topicList, resourceList, labList] = await Promise.all([
           apiFetch<LessonTopic[]>(base + "/topics"),
           apiFetch<LessonResource[]>(base + "/resources"),
           apiFetch<LessonLabReference[]>(base + "/lab-references"),
         ]);
         return [lesson.id, topicList, resourceList, labList] as const;
-      }),
+      })),
+    );
+
+    const topicMap: Record<number, LessonTopic[]> = {};
+    const resourceMap: Record<number, LessonResource[]> = {};
+    const labMap: Record<number, LessonLabReference[]> = {};
+    for (const [lessonId, topicList, resourceList, labList] of detailPairs) {
+      topicMap[lessonId] = topicList;
+      resourceMap[lessonId] = resourceList;
+      labMap[lessonId] = labList;
+    }
+
+    setUser(me);
+    setCourse(found);
+    setCategories(categoryList);
+    setAllCourses(courses);
+    setSelectedPrerequisites(prerequisiteList.map(item => item.id));
+    setModules(mods);
+    setLessons(lessonMap);
+    setTopics(topicMap);
+    setResources(resourceMap);
+    setLabReferences(labMap);
+    setCourseForm({
+      title: found.title,
+      slug: found.slug,
+      short_description: found.short_description || "",
+      description: found.description || "",
+      category_id: found.category_id ? String(found.category_id) : "",
+      visibility: found.visibility,
+      level: found.level || "",
+      estimated_hours: found.estimated_hours != null ? String(found.estimated_hours) : "",
+    });
+
+    const moduleState: Record<number, ModuleForm> = {};
+    for (const mod of mods) {
+      moduleState[mod.id] = {
+        title: mod.title,
+        description: mod.description || "",
+        order_index: String(mod.order_index),
+      };
+    }
+    setModuleForms(moduleState);
+
+    const lessonState: Record<number, LessonForm> = {};
+    for (const lesson of lessonList) {
+      lessonState[lesson.id] = {
+        title: lesson.title,
+        slug: lesson.slug,
+        content_type: lesson.content_type,
+        content: lesson.content || "",
+        order_index: String(lesson.order_index),
+        estimated_minutes: lesson.estimated_minutes != null ? String(lesson.estimated_minutes) : "",
+        is_required: lesson.is_required,
+      };
+    }
+    setLessonForms(lessonState);
+  }
+
+use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { apiFetch } from "../../../../lib/api";
+import type {
+  Course, CourseCategory, CourseModule, Lesson, LessonLabReference,
+  LessonResource, LessonTopic, User
+} from "../../../../lib/types";
+
+type CourseForm = {
+  title: string;
+  slug: string;
+  short_description: string;
+  description: string;
+  category_id: string;
+  visibility: string;
+  level: string;
+  estimated_hours: string;
+};
+
+type ModuleForm = { title: string; description: string; order_index: string };
+type LessonForm = {
+  title: string;
+  slug: string;
+  content_type: string;
+  content: string;
+  order_index: string;
+  estimated_minutes: string;
+  is_required: boolean;
+};
+type TopicForm = { title: string; content: string; order_index: string };
+type ResourceForm = { name: string; resource_type: string; url: string; description: string };
+type LabForm = { reference_key: string; display_name: string; metadata_json: string };
+
+const emptyTopic: TopicForm = { title: "", content: "", order_index: "" };
+const emptyResource: ResourceForm = { name: "", resource_type: "link", url: "", description: "" };
+const emptyLab: LabForm = { reference_key: "", display_name: "", metadata_json: "" };
+
+export default function CourseEditorPage() {
+  const params = useParams<{ id: string }>();
+  const courseId = Number(params.id);
+
+  const [user, setUser] = useState<User | null>(null);
+  const [course, setCourse] = useState<Course | null>(null);
+  const [categories, setCategories] = useState<CourseCategory[]>([]);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [selectedPrerequisites, setSelectedPrerequisites] = useState<number[]>([]);
+  const [modules, setModules] = useState<CourseModule[]>([]);
+  const [lessons, setLessons] = useState<Record<number, Lesson[]>>({});
+  const [topics, setTopics] = useState<Record<number, LessonTopic[]>>({});
+  const [resources, setResources] = useState<Record<number, LessonResource[]>>({});
+  const [labReferences, setLabReferences] = useState<Record<number, LessonLabReference[]>>({});
+
+  const [courseForm, setCourseForm] = useState<CourseForm | null>(null);
+  const [moduleForms, setModuleForms] = useState<Record<number, ModuleForm>>({});
+  const [lessonForms, setLessonForms] = useState<Record<number, LessonForm>>({});
+  const [newModule, setNewModule] = useState({ title: "", description: "" });
+  const [newLesson, setNewLesson] = useState<Record<number, LessonForm>>({});
+  const [newTopic, setNewTopic] = useState<Record<number, TopicForm>>({});
+  const [newResource, setNewResource] = useState<Record<number, ResourceForm>>({});
+  const [newLab, setNewLab] = useState<Record<number, LabForm>>({});
+
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  function setFailure(err: unknown) {
+    setError(err instanceof Error ? err.message : "Unable to complete the operation");
+  }
+
+  async function load() {
+    const me = await apiFetch<User>("/api/v1/auth/me");
+    if (!me.is_platform_admin) throw new Error("Platform administrator access required.");
+
+    const [courses, categoryList] = await Promise.all([
+      apiFetch<Course[]>("/admin/courses"),
+      apiFetch<CourseCategory[]>("/admin/courses/categories"),
+    ]);
+    const found = courses.find(item => item.id === courseId);
+    if (!found) throw new Error("Course not found.");
+
+    const [mods, prerequisiteList] = await Promise.all([
+      apiFetch<CourseModule[]>("/admin/courses/" + courseId + "/modules"),
+      apiFetch<Course[]>("/admin/courses/" + courseId + "/prerequisites"),
+    ]);
+
+    const lessonPairs = await Promise.all(
+      mods.map(async mod => [
+        mod.id,
+        await apiFetch<Lesson[]>("/admin/courses/" + courseId + "/modules/" + mod.id + "/lessons"),
+      ] as const),
+    );
+
+    const lessonMap = Object.fromEntries(lessonPairs);
+    const lessonList = Object.values(lessonMap).flat();
+
+    const detailPairs = await Promise.all(
+      mods.flatMap(mod => (lessonMap[mod.id] || []).map(async lesson => {
+        const base = "/admin/courses/" + courseId + "/modules/" + mod.id + "/lessons/" + lesson.id;
+        const [topicList, resourceList, labList] = await Promise.all([
+          apiFetch<LessonTopic[]>(base + "/topics"),
+          apiFetch<LessonResource[]>(base + "/resources"),
+          apiFetch<LessonLabReference[]>(base + "/lab-references"),
+        ]);
+        return [lesson.id, topicList, resourceList, labList] as const;
+      })),
     );
 
     const topicMap: Record<number, LessonTopic[]> = {};
