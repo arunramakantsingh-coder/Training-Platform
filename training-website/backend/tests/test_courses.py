@@ -1,30 +1,3 @@
-from sqlalchemy import select
-
-from app.models.user import User
-from tests.conftest import TestingSessionLocal
-
-
-def make_platform_admin(client):
-    response = client.post(
-        "/api/v1/auth/register",
-        json={
-            "email": "course-admin@example.com",
-            "full_name": "Course Admin",
-            "password": "StrongPassword123!",
-        },
-    )
-    assert response.status_code == 201
-    with TestingSessionLocal() as db:
-        user = db.scalar(select(User).where(User.email == "course-admin@example.com"))
-        user.is_platform_admin = True
-        db.commit()
-    login = client.post(
-        "/api/v1/auth/login",
-        json={"email": "course-admin@example.com", "password": "StrongPassword123!"},
-    )
-    assert login.status_code == 200
-
-
 def test_non_admin_cannot_manage_courses(client):
     client.post(
         "/api/v1/auth/register",
@@ -34,8 +7,8 @@ def test_non_admin_cannot_manage_courses(client):
     assert response.status_code == 403
 
 
-def test_course_lifecycle_and_public_catalogue(client):
-    make_platform_admin(client)
+def test_course_lifecycle_and_public_catalogue(platform_admin):
+    client = platform_admin
 
     category = client.post(
         "/api/v1/admin/courses/categories",
@@ -93,8 +66,8 @@ def test_course_lifecycle_and_public_catalogue(client):
     assert structure.json()["modules"][0]["lessons"][0]["title"] == "Network Architecture Principles"
 
 
-def test_course_prerequisite_validation(client):
-    make_platform_admin(client)
+def test_course_prerequisite_validation(platform_admin):
+    client = platform_admin
 
     first = client.post(
         "/api/v1/admin/courses",
