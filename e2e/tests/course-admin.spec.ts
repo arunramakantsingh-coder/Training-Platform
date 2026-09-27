@@ -1,10 +1,10 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const adminEmail = process.env.ADMIN_EMAIL || "phase2-admin@example.com";
 const adminPassword = process.env.ADMIN_PASSWORD || "Phase2Admin!2026";
 const courseSlug = process.env.TEST_COURSE_SLUG || "enterprise-network-automation-sdwan";
 
-async function login(page: Parameters<typeof test>[0]["page"]) {
+async function login(page: Page) {
   await page.goto("/login");
   await page.locator('input[type="email"]').fill(adminEmail);
   await page.locator('input[type="password"]').fill(adminPassword);
