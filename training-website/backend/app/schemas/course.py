@@ -69,6 +69,13 @@ class CourseModuleCreateRequest(BaseModel):
     order_index: int = Field(ge=0)
 
 
+class CourseModuleUpdateRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    title: str | None = Field(default=None, min_length=2, max_length=200)
+    description: str | None = None
+    order_index: int | None = Field(default=None, ge=0)
+
+
 class CourseModuleResponse(CourseModuleCreateRequest):
     model_config = ConfigDict(from_attributes=True)
     id: int
@@ -84,6 +91,17 @@ class LessonCreateRequest(BaseModel):
     order_index: int = Field(ge=0)
     estimated_minutes: int | None = Field(default=None, ge=0, le=100000)
     is_required: bool = True
+
+
+class LessonUpdateRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    title: str | None = Field(default=None, min_length=2, max_length=200)
+    slug: str | None = Field(default=None, min_length=2, max_length=200)
+    content_type: LessonContentType | None = None
+    content: str | None = None
+    order_index: int | None = Field(default=None, ge=0)
+    estimated_minutes: int | None = Field(default=None, ge=0, le=100000)
+    is_required: bool | None = None
 
 
 class LessonResponse(LessonCreateRequest):
