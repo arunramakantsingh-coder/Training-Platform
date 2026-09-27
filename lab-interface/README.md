@@ -1,6 +1,6 @@
 # Lab Interface
 
-Lab Interface is the platform-specific adapter boundary between the platform-neutral Lab Controller and a lab execution platform.
+Lab Interface is the platform-neutral lab integration boundary between Lab Controller and a lab execution platform.
 
 Phase 6 starts with EVE-NG.
 
@@ -8,21 +8,44 @@ Phase 6 starts with EVE-NG.
 
 Training Website
 → Lab Controller
-→ Lab Interface
+→ **Lab Interface**
+→ **Lab Connector**
+→ **Lab EVE API**
 → EVE-NG
 
-Lab Controller must not contain EVE-NG API paths, authentication details, lab-file conventions, or other EVE-NG-specific behavior.
+### Responsibilities
+
+**Lab Interface**
+- Defines the generic lab contract.
+- Contains no EVE-specific API paths, credentials, filesystem paths, or wrapper syntax.
+
+**Lab Connector**
+- Implements the Lab Interface for a platform.
+- Translates generic operations into the Lab EVE API contract.
+- Is replaceable for future Lab GNS3 API, Lab CML API, or other platform integrations.
+
+**Lab EVE API**
+- Runs inside the EVE-NG VM.
+- Owns EVE-specific filesystem, native wrapper, permissions, and any future EVE API integration.
+- Provides a stable Training Platform integration contract.
+- Does not bypass EVE-NG licensing or platform restrictions.
 
 ## Current implementation
 
-- Generic adapter contract.
-- EVE-NG API client with session authentication.
-- EVE-NG adapter for lab create, read/status, start, stop, reset/wipe, release, and delete operations.
-- Configuration through environment variables.
-- Unit tests using a fake EVE-NG transport.
+- Generic Lab Interface protocol.
+- Lab Connector client for Lab EVE API.
+- Lab EVE API FastAPI service.
+- Safe .unl filesystem cloning foundation.
+- Native lifecycle operations deliberately gated until unl_wrapper syntax is verified on the installed EVE-NG version.
 
-## EVE-NG API
+## POC direction
 
-The adapter follows the documented EVE-NG API model: authenticated API requests use an EVE session cookie and return JSend-style responses. EVE-NG documents login at `/api/auth/login`, lab management under `/api/labs/... `, and node start/stop/wipe operations under the lab node endpoints.
+The reusable model is:
 
-Provisioning of a reusable topology/template is intentionally separated from this initial adapter foundation. The next increment will define the template/clone mechanism without leaking that concern into Lab Controller.
+Master lab template
+→ Lab EVE API
+→ per-student .unl clone
+→ Lab Controller assignment
+→ student access
+
+The current development EVE VM is used for control-plane validation. Actual 25-student concurrent runtime requires a nested-virtualization-capable host, sufficient CPU/RAM, appropriate EVE licensing, and vendor image/licensing validation.
