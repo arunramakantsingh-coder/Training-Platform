@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import DateTime, Integer, String
+from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
@@ -8,6 +8,7 @@ class LabTemplate(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     key: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     active: Mapped[bool] = mapped_column(default=True, nullable=False)
 
 class Lab(Base):
