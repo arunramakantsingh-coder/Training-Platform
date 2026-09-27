@@ -9,15 +9,13 @@ from app.config import settings
 from app.contracts import LabInterfaceResult
 
 
-class EveNGError(RuntimeError):
+class LabEveAPIError(RuntimeError):
     pass
 
 
 @dataclass
-class EveNGClient:
+class LabEveAPIClient:
     base_url: str
-    username: str
-    password: str
     verify_ssl: bool = False
     timeout: float = 15.0
 
@@ -31,150 +29,89 @@ class EveNGClient:
     def close(self) -> None:
         self._client.close()
 
-    def login(self) -> None:
-        response = self._client.post(
-            "/api/auth/login",
-            json={
-                "username": self.username,
-                "password": self.password,
-                "html5": "0",
-            },
-        )
-        response.raise_for_status()
-        payload = response.json()
-        if payload.get("status") != "success":
-            raise EveNGError(payload.get("message", "EVE-NG authentication failed"))
-
     def _request(self, method: str, path: str, **kwargs) -> dict:
         response = self._client.request(method, path, **kwargs)
-        if response.status_code in {400, 401}:
-            self.login()
-            response = self._client.request(method, path, **kwargs)
         response.raise_for_status()
         payload = response.json()
-        if payload.get("status") != "success":
-            raise EveNGError(payload.get("message", "EVE-NG API request failed"))
+        if payload.get("detail"):
+            raise LabEveAPIError(str(payload["detail"]))
         return payload
 
-    def get_folder(self, path: str) -> dict:
+    def provision(self, template_path: str, lab_path: str) -> dict:
+        return self._request(
+            "POST",
+            "/v1/labs/provision",
+            json={"template_path": template_path, "lab_path": lab_path},
+        )
+
+    def start(self, lab_path: str) -> dict:
+        return self._request("POST", "/v1/labs/start", json={"lab_path": lab_path})
+
+    def stop(self, lab_path: str) -> dict:
+        return self._request("POST", "/v1/labs/stop", json={"lab_path": lab_path})
+
+    def reset(self, lab_path: str) -> dict:
+        return self._request("POST", "/v1/labs/reset", json={"lab_path": lab_path})
+
+    def status(self, lab_path: str) -> dict:
         return self._request(
             "GET",
-            f"/api/folders/{quote(path.strip('/'), safe='/')}",
+            f"/v1/labs?lab_path={quote(lab_path, safe='')}",
         )
 
-    def create_folder(self, parent: str, name: str) -> dict:
-        return self._request(
-            "POST",
-            "/api/folders",
-            json={"path": parent, "name": name},
-        )
-
-    def ensure_folder(self, path: str) -> None:
-        normalized = "/" + path.strip("/")
-        if normalized == "/":
-            return
-        try:
-            self.get_folder(normalized)
-            return
-        except (EveNGError, httpx.HTTPStatusError):
-            parts = [part for part in normalized.strip("/").split("/") if part]
-            current = ""
-            for part in parts:
-                parent = current or "/"
-                current = f"{current}/{part}"
-                try:
-                    self.get_folder(current)
-                except (EveNGError, httpx.HTTPStatusError):
-                    self.create_folder(parent, part)
-
-    def get_lab(self, path: str) -> dict:
-        return self._request("GET", f"/api/labs/{quote(path.strip('/'), safe='/')}")
-
-    def create_lab(self, folder: str, name: str, author: str = "Training Platform") -> dict:
-        return self._request(
-            "POST",
-            "/api/labs",
-            json={
-                "path": folder,
-                "name": name,
-                "version": "1",
-                "author": author,
-                "description": "Training Platform lab",
-            },
-        )
-
-    def delete_lab(self, path: str) -> dict:
+    def delete(self, lab_path: str) -> dict:
         return self._request(
             "DELETE",
-            f"/api/labs/{quote(path.strip('/'), safe='/')}",
+            "/v1/labs",
+            json={"lab_path": lab_path},
         )
 
-    def start_all(self, path: str) -> dict:
-        encoded = quote(path.strip("/"), safe="/")
-        return self._request("GET", f"/api/labs/{encoded}/nodes/start")
 
-    def stop_all(self, path: str) -> dict:
-        encoded = quote(path.strip("/"), safe="/")
-        return self._request("GET", f"/api/labs/{encoded}/nodes/stop")
+class LabConnector:
+    """EVE implementation of the generic Lab Interface."""
 
-    def wipe_all(self, path: str) -> dict:
-        encoded = quote(path.strip("/"), safe="/")
-        return self._request("GET", f"/api/labs/{encoded}/nodes/wipe")
-
-
-class EveNGAdapter:
-    def __init__(self, client: EveNGClient | None = None) -> None:
-        self.client = client or EveNGClient(
-            base_url=settings.eve_ng_base_url,
-            username=settings.eve_ng_username,
-            password=settings.eve_ng_password,
-            verify_ssl=settings.eve_ng_verify_ssl,
-            timeout=settings.eve_ng_timeout_seconds,
+    def __init__(self, client: LabEveAPIClient | None = None) -> None:
+        self.client = client or LabEveAPIClient(
+            base_url=settings.lab_eve_api_url,
+            verify_ssl=settings.lab_eve_api_verify_ssl,
+            timeout=settings.lab_eve_api_timeout_seconds,
         )
 
     def provision(self, template_key: str, lab_id: int, user_id: int) -> LabInterfaceResult:
-        # Template cloning is intentionally a separate increment. For now the
-        # adapter creates a uniquely named EVE-NG lab in the configured workspace.
-        folder = settings.eve_ng_lab_folder
-        name = f"lab-{lab_id}-user-{user_id}"
-        self.client.login()
-        self.client.ensure_folder(folder)
-        payload = self.client.create_lab(folder=folder, name=name, author="Training Platform")
-        path = payload.get("data", {}).get("path") or f"{folder.rstrip('/')}/{name}.unl"
+        template_path = (
+            f"{settings.lab_eve_template_root.rstrip('/')}/{template_key}.unl"
+        )
+        lab_path = f"{settings.lab_eve_lab_root.rstrip('/')}/lab-{lab_id}-user-{user_id}.unl"
+        payload = self.client.provision(template_path, lab_path)
         return LabInterfaceResult(
-            external_reference=path,
-            access_url=f"{settings.eve_ng_base_url.rstrip('/')}/index.html",
-            state="provisioned",
+            external_reference=payload["lab_path"],
+            state=payload.get("state", "provisioned"),
         )
 
     def start(self, external_reference: str) -> LabInterfaceResult:
-        self.client.login()
-        self.client.start_all(external_reference)
-        return LabInterfaceResult(external_reference=external_reference, state="running")
+        payload = self.client.start(external_reference)
+        return LabInterfaceResult(external_reference, state=payload.get("state", "running"))
 
     def stop(self, external_reference: str) -> LabInterfaceResult:
-        self.client.login()
-        self.client.stop_all(external_reference)
-        return LabInterfaceResult(external_reference=external_reference, state="stopped")
+        payload = self.client.stop(external_reference)
+        return LabInterfaceResult(external_reference, state=payload.get("state", "stopped"))
 
     def reset(self, external_reference: str) -> LabInterfaceResult:
-        self.client.login()
-        self.client.wipe_all(external_reference)
-        return LabInterfaceResult(external_reference=external_reference, state="provisioned")
+        payload = self.client.reset(external_reference)
+        return LabInterfaceResult(external_reference, state=payload.get("state", "provisioned"))
 
     def status(self, external_reference: str) -> LabInterfaceResult:
-        self.client.login()
-        self.client.get_lab(external_reference)
-        return LabInterfaceResult(
-            external_reference=external_reference,
-            access_url=f"{settings.eve_ng_base_url.rstrip('/')}/index.html",
-            state="unknown",
-        )
+        self.client.status(external_reference)
+        return LabInterfaceResult(external_reference, state="unknown")
 
     def release(self, external_reference: str) -> LabInterfaceResult:
-        return LabInterfaceResult(external_reference=external_reference, state="released")
+        return LabInterfaceResult(external_reference, state="released")
 
     def delete(self, external_reference: str) -> LabInterfaceResult:
-        self.client.login()
-        self.client.delete_lab(external_reference)
-        return LabInterfaceResult(external_reference=external_reference, state="deleted")
+        payload = self.client.delete(external_reference)
+        return LabInterfaceResult(external_reference, state=payload.get("state", "deleted"))
+
+
+# Temporary compatibility name for the existing Phase 6 tests/imports.
+EveNGAdapter = LabConnector
+EveNGError = LabEveAPIError
