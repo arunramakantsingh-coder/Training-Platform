@@ -8,7 +8,30 @@ The Training Platform is a reusable product for organizations and individual sub
 2. Lab Controller — generic lab lifecycle and orchestration.
 3. Lab Interface — platform-specific adapter boundary between Lab Controller and a lab execution platform.
 
-EVE-NG is the current execution platform. AInterceptor is a separate product and is outside this repository.
+EVE-NG is the current lab execution platform. AIF/AInterceptor is a separate product and is consumed, when enabled, as an external AI intelligence service through a standardized AI service boundary.
+
+## External Integration Boundaries
+
+The Training Platform has two distinct external/platform boundaries:
+
+### Lab Execution Boundary
+
+Training Platform → Lab Controller → Lab Interface → EVE-NG
+
+- Lab Controller owns generic lab lifecycle, assignment, authorization, usage, and orchestration.
+- Lab Interface owns platform-specific behavior.
+- EVE-NG owns the actual virtual lab execution.
+- EVE-NG-specific API paths, authentication, lab files, topology operations, node operations, and platform behavior must not leak into Lab Controller.
+
+### AI Intelligence Boundary
+
+Training Platform → AI Service Interface → AIF/AInterceptor → AIP/provider(s) → AI model/service
+
+AIF/AInterceptor is a separate product and is not part of the Training Platform repository or service boundary. The Training Platform may use it as an external AI intelligence provider/router.
+
+The Training Platform must depend on a stable AI-service contract rather than on AInterceptor-specific implementation details. The external AI service boundary should remain capable of supporting multiple provider and protocol paths, including API/HTTP and MCP where appropriate, without coupling the Training Platform to one AIP.
+
+This boundary is intentionally separate from the Lab Controller and Lab Interface. AI intelligence may support learner, trainer, administration, lab assistance, or future agent workflows, but AI routing/provider implementation belongs to AIF/AInterceptor.
 
 ## Cross-Phase Architecture Rules
 
@@ -41,6 +64,8 @@ Never commit a changing infrastructure IP as the permanent production value of `
 ### Service and Platform Separation
 
 Training Website, Lab Controller, and Lab Interface remain logically separated services. EVE-NG is the lab execution platform, not a product service. Platform-specific behavior belongs behind Lab Interface.
+
+AIF/AInterceptor is an external AI product, not a Training Platform service. Integration must occur through the AI service boundary and must not introduce AIF/AInterceptor-specific dependencies into Lab Controller or Lab Interface.
 
 ## Phase Roadmap
 
@@ -88,6 +113,10 @@ Production deployment, onboarding workflow, documentation, pricing/entitlement o
 ## End-to-End Target Flow
 
 Learner → Training Website → authentication/authorization → course/subscription entitlement → Lab Controller → Lab Interface → EVE-NG → assigned lab → usage/status → dashboard.
+
+Optional AI-assisted flows use a separate boundary:
+
+Learner/Trainer/Admin → Training Platform AI Service Interface → AIF/AInterceptor → AIP/provider → AI service/model.
 
 ## Development Rule
 
