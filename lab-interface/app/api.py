@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException
 
 from app.contracts import LabInterfaceResult
-from app.eve_ng import EveNGAdapter, EveNGError
+from app.eve_ng import EveNGError, LabConnector
 from app.schemas import ProvisionRequest, ReferenceRequest
 
 
 router = APIRouter(prefix="/api/v1/lab-interface", tags=["lab-interface"])
-adapter = EveNGAdapter()
+adapter = LabConnector()
 
 
 def _execute(fn) -> dict:
@@ -23,9 +23,7 @@ def _execute(fn) -> dict:
 
 @router.post("/provision")
 def provision(payload: ProvisionRequest):
-    return _execute(
-        lambda: adapter.provision(payload.template_key, payload.lab_id, payload.user_id)
-    )
+    return _execute(lambda: adapter.provision(payload.template_key, payload.lab_id, payload.user_id))
 
 
 @router.post("/start")
@@ -56,5 +54,3 @@ def release(payload: ReferenceRequest):
 @router.post("/delete")
 def delete(payload: ReferenceRequest):
     return _execute(lambda: adapter.delete(payload.external_reference))
-
-
