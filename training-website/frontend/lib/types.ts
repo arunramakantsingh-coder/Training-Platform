@@ -4,3 +4,7 @@ export type Course = { id: number; title: string; slug: string; short_descriptio
 export type CourseCategory = { id: number; name: string; slug: string; description: string | null };
 export type CourseModule = { id: number; course_id: number; title: string; description: string | null; order_index: number };
 export type Lesson = { id: number; module_id: number; title: string; slug: string; content_type: "text" | "video" | "document" | "quiz" | "lab_reference"; content: string | null; order_index: number; estimated_minutes: number | null; is_required: boolean };
+
+export type LessonTopic = { id: number; lesson_id: number; title: string; content: string | null; order_index: number };
+export type LessonResource = { id: number; lesson_id: number; name: string; resource_type: "link" | "document" | "video" | "other"; url: string; description: string | null };
+export type LessonLabReference = { id: number; lesson_id: number; reference_key: string; display_name: string | null; metadata_json: string | null };
