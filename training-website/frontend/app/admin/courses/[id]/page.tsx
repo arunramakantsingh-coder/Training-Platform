@@ -44,7 +44,7 @@ export default function CourseEditorPage() {
     setError(""); setMessage("");
     try {
       const item = await apiFetch<Lesson>("/admin/courses/" + courseId + "/modules/" + module.id + "/lessons", {method:"POST",body:JSON.stringify({
-        title:draft.title,slug:draft.slug,content_type:draft.content_type,content:null,
+        title:draft.title,slug:draft.slug,content_type:draft.content_type,content:draft.content || null,
         order_index:(lessons[module.id]||[]).length,estimated_minutes:draft.estimated_minutes ? Number(draft.estimated_minutes) : null,is_required:true
       })});
       setLessons(v=>({...v,[module.id]:[...(v[module.id]||[]),item]}));
