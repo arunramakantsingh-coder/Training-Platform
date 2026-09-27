@@ -56,6 +56,37 @@ class EveNGClient:
             raise EveNGError(payload.get("message", "EVE-NG API request failed"))
         return payload
 
+    def get_folder(self, path: str) -> dict:
+        return self._request(
+            "GET",
+            f"/api/folders/{quote(path.strip('/'), safe='/')}",
+        )
+
+    def create_folder(self, parent: str, name: str) -> dict:
+        return self._request(
+            "POST",
+            "/api/folders",
+            json={"path": parent, "name": name},
+        )
+
+    def ensure_folder(self, path: str) -> None:
+        normalized = "/" + path.strip("/")
+        if normalized == "/":
+            return
+        try:
+            self.get_folder(normalized)
+            return
+        except EveNGError:
+            parts = [part for part in normalized.strip("/").split("/") if part]
+            current = ""
+            for part in parts:
+                parent = current or "/"
+                current = f"{current}/{part}"
+                try:
+                    self.get_folder(current)
+                except EveNGError:
+                    self.create_folder(parent, part)
+
     def get_lab(self, path: str) -> dict:
         return self._request("GET", f"/api/labs/{quote(path.strip('/'), safe='/')}")
 
@@ -104,9 +135,10 @@ class EveNGAdapter:
     def provision(self, template_key: str, lab_id: int, user_id: int) -> LabInterfaceResult:
         # Template cloning is intentionally a separate increment. For now the
         # adapter creates a uniquely named EVE-NG lab in the configured workspace.
-        folder = "/Training-Platform"
+        folder = settings.eve_ng_lab_folder
         name = f"lab-{lab_id}-user-{user_id}"
         self.client.login()
+        self.client.ensure_folder(folder)
         payload = self.client.create_lab(folder=folder, name=name, author="Training Platform")
         path = payload.get("data", {}).get("path") or f"{folder.rstrip('/')}/{name}.unl"
         return LabInterfaceResult(
@@ -132,7 +164,7 @@ class EveNGAdapter:
 
     def status(self, external_reference: str) -> LabInterfaceResult:
         self.client.login()
-        payload = self.client.get_lab(external_reference)
+        self.client.get_lab(external_reference)
         return LabInterfaceResult(
             external_reference=external_reference,
             access_url=f"{settings.eve_ng_base_url.rstrip('/')}/index.html",
