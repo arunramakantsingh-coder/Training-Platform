@@ -8,7 +8,7 @@ from app.core.database import get_db
 from app.models.course import Course, CourseModule, Lesson
 from app.models.training import Enrollment, LessonProgress, TrainingSession
 from app.models.user import User
-from app.schemas.training import EnrollmentCreateRequest, EnrollmentResponse, LearnerCourseResponse, ProgressResponse, ProgressUpdateRequest, TrainingSessionCreateRequest, TrainingSessionResponse, TrainingSessionUpdateRequest
+from app.schemas.training import EnrollmentCreateRequest, EnrollmentResponse, EnrollmentUpdateRequest, LearnerCourseResponse, ProgressResponse, ProgressUpdateRequest, TrainingSessionCreateRequest, TrainingSessionResponse, TrainingSessionUpdateRequest
 
 router = APIRouter(prefix="/training", tags=["training"])
 admin_router = APIRouter(prefix="/admin/training", tags=["admin-training"])
@@ -177,6 +177,18 @@ def update_session(session_id: int, payload: TrainingSessionUpdateRequest, _: Us
 @admin_router.get("/enrollments", response_model=list[EnrollmentResponse])
 def admin_enrollments(_: User = Depends(require_platform_admin), db: Session = Depends(get_db)) -> list[Enrollment]:
     return list(db.scalars(select(Enrollment).order_by(Enrollment.enrolled_at.desc())).all())
+
+@admin_router.patch("/enrollments/{enrollment_id}", response_model=EnrollmentResponse)
+def update_enrollment(enrollment_id: int, payload: EnrollmentUpdateRequest, _: User = Depends(require_platform_admin), db: Session = Depends(get_db)) -> Enrollment:
+    item = enrollment_or_404(db, enrollment_id)
+    item.status = payload.status
+    if payload.status == "completed":
+        item.completed_at = datetime.now(timezone.utc)
+    else:
+        item.completed_at = None
+    db.commit()
+    db.refresh(item)
+    return item
 
 @admin_router.post("/courses/{course_id}/enrollments", response_model=EnrollmentResponse, status_code=status.HTTP_201_CREATED)
 def admin_enroll(course_id: int, payload: EnrollmentCreateRequest, _: User = Depends(require_platform_admin), db: Session = Depends(get_db)) -> Enrollment:
