@@ -48,6 +48,14 @@ def public_courses(db: Session=Depends(get_db)) -> list[dict]:
     courses=db.scalars(select(Course).where(Course.status=="published",Course.is_active.is_(True),Course.visibility=="public").order_by(Course.title.asc())).all()
     return [{"id":c.id,"title":c.title,"slug":c.slug,"short_description":c.short_description,"level":c.level,"estimated_hours":c.estimated_hours} for c in courses]
 
+@router.get("/catalogue/{slug}")
+def public_course(slug: str, db: Session = Depends(get_db)) -> dict:
+    course = db.scalar(select(Course).where(Course.slug == slug, Course.status == "published", Course.is_active.is_(True), Course.visibility == "public"))
+    if course is None:
+        raise HTTPException(status_code=404, detail="Course not found")
+    modules, _ = course_structure(db, course)
+    return {"course": {"id": course.id, "title": course.title, "slug": course.slug, "short_description": course.short_description, "description": course.description, "level": course.level, "estimated_hours": course.estimated_hours}, "modules": modules}
+
 @router.get("/courses/{slug}", response_model=LearnerCourseResponse)
 def learner_course(slug:str,current_user:User=Depends(get_current_user),db:Session=Depends(get_db)) -> LearnerCourseResponse:
     course=db.scalar(select(Course).where(Course.slug==slug,Course.status=="published",Course.is_active.is_(True),Course.visibility=="public"))
