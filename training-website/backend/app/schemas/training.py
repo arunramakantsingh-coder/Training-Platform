@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 class TrainingSessionCreateRequest(BaseModel):
@@ -46,6 +47,11 @@ class EnrollmentCreateRequest(BaseModel):
 
 class ProgressUpdateRequest(BaseModel):
     status: str = Field(pattern="^(not_started|in_progress|completed)$")
+
+EnrollmentStatus = Literal["pending", "active", "completed", "cancelled"]
+
+class EnrollmentUpdateRequest(BaseModel):
+    status: EnrollmentStatus
 
 class ProgressResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
